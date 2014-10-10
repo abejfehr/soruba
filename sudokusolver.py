@@ -33,10 +33,12 @@
 ###
 def solve_sudoku(p):
 	q = generate_candidate_puzzle(p)
-	#TODO: store boxes, rows and columns separately here
 	return solve(q)
 
 import copy
+
+## from now on, q will be a candidate puzzle as such that it contains [[rowset],
+## [colset], [boxset]]
 
 ###
 # Function: solve()
@@ -51,26 +53,28 @@ def solve(q):
 	if solved(q): return textify(q)
 
 	#solve the trivial cases
-	for i in range(81):
-		if len(q[i]) is 1:
-			clear_candidates(i, q)
+	for i in range(9):
+		for j in range(9)
+			if len(q[0][i][j]) is 1:
+				clear_candidates(i, q)
 
 	h = 2
 	while(not solved(q) and h < 8):
 		#solve the squares with > 1 possibility
-		for i in range(81):
-			if len(q[i]) is h:
-				for j in range(h):
-					nq = photocopy_puzzle_with(j, i, q)
-#					print textify(nq)
-#					print " " * i + "^"
-#					print " " * i + str(q[i])
-#					print valid(nq)
-#					raw_input("Press Enter to Continue")
-					result = solve(nq)
-					if result:
-						return result
-				return False
+		for i in range(9):
+			for j in range(9):
+				if len(q[0][i][j]) is h:
+					for k in range(h):
+						nq = photocopy_puzzle_with(k, i*9+j, q)
+	#					print textify(nq)
+	#					print " " * i + "^"
+	#					print " " * i + str(q[i])
+	#					print valid(nq)
+	#					raw_input("Press Enter to Continue")
+						result = solve(nq)
+						if result:
+							return result
+					return False
 		h += 1
 
 	if solved(q): return textify(q)
@@ -123,13 +127,29 @@ def textify(q):
 ###
 def photocopy_puzzle_with(n, i, q):
 	x = copy.deepcopy(q)
-	x[i] = [x[i][n]]
+	#convert the i to
+	v = [x[0][i%9][i/9][n]]
+	x[0][i%9][i/9][n] = v
+	x[1][i/9][i%9][n] = v
+	x[2][i/9*3+i%9][i/9%3*3+i%9%3][n] = v
 	clear_candidates(i, x)
 	return x
 
+"""
+x  i j
+0  0 0  a = offset from the left edge of the puzzle = x % 9
+1  0 1  j = offset from the left edge of the box = a % 3
+2  0 2  b = offset from the top edge of the puzzle x / 9
+3  1 0  i = offset from the top edge of the box = b % 3
+4  1 1  k = 1 to 9 coordinate in the box = i * 3 + j
+5  1 2  m = box coord from left = a / 3
+6  2 0  n = box coord from top = b / 3
+7  2 1  s = b * 3 + a
+"""
+
 ###
-# Function: solve()
-# Purpose:  solves a sudoku puzzle
+# Function: generate_candidate_puzzle()
+# Purpose:  generates a candidate puzzle
 # Input:    puzzle - an 81 character string which is a sudoku puzzle.
 #           Completed numbers are written and empty spaces are .'s
 # Output:   the completed puzzle - an 81 character string of numbers
@@ -138,11 +158,36 @@ def generate_candidate_puzzle(p):
 	#the puzzle is already solved or isn't the correct length
 	if not "." in p or len(p) is not 81: return False
 	q = []
-	for i in range(81):
-		z = get_candidates(i, p)
-		if z: q.append(z)
-		else: return False
+	q.append(get_candidate_rows(p))
+	q.append(get_candidate_cols(p))
+	q.append(get_candidate_boxes(p))
 	return q
+
+##
+## The following functions are pretty damn crafty, I've gotta say. If you look
+## closely, you'll notice that I'm using list comprehension, enumeration,
+## ternary operators, slicing, and other advanced techniques. I'm able to
+## accomplish an entire program in one line of code. Cool stuff
+##
+
+def get_candidate_rows(p):
+	q = []
+	for z in range(9):
+		q.append([get_candidates(z*9+j,p) if x is "." else [int(x)] for (j,x) in enumerate(p[z*9:z*9+9])])
+	return q
+
+def get_candidate_cols(p):
+	q = []
+	for z in range(9):
+		q.append([get_candidates(j*9+z,p) if x is "." else [int(x)] for (j,x) in enumerate(p[z::9])])
+	return q
+
+def get_candidate_boxes(p):
+	q = []
+	for m in [n for n in range(81) if n % 3 is 0 and (n / 9) % 3 is 0]:
+		q.append([get_candidates(m+j%3+j/3*9,p) if x is "." else [int(x)] for (j,x) in enumerate(p[m:m+3] + p[m+9:m+12] + p[m+18:m+21])])
+	return q
+
 
 ###
 # Function: get_candidates()
@@ -205,22 +250,27 @@ def get_box_set(i, p):
 #           related squares
 ###
 def clear_candidates(i, q):
-	if len(q[i]) > 1: return
+
+	if len(q[0][i%9][i/9]) > 1: return
 	flag = False
-	z = i / 9;
+
+	a = i%9
+	b = i/9
+	for w in range(2):
+		for x in range(9):
+			if q[w][a][b][0] in q[w][a][x] and i/9 is not x and len(q[w][a][x]) > 1:
+				q[w][a][b].remove(q[w][a][b][0])
+				flag = True
+				if len(q[w][a][x]) is 1:
+					clear_candidates(a*9+x, q)
+		#switch a and b
+		z = a; a = b; b = z
 	for x in range(9):
-		if q[i][0] in q[9*z+x] and 9*z+x is not i and len(q[9*z+x]) > 1:
-			q[9*z+x].remove(q[i][0])
-			flag = True
-			if len(q[9*z+x]) is 1:
-				clear_candidates(9*z+x, q)
-	z = i % 9;
-	for x in range(9):
-		if q[i][0] in q[9*x+z] and 9*x+z is not i and len(q[9*x+z]) > 1:
-			q[9*x+z].remove(q[i][0])
-			flag = True
-			if len(q[9*x+z]) is 1:
-				clear_candidates(9*x+z, q)
+
+	a = i/9*3+i%9
+	b = i/9%3*3+i%9%3
+
+	#TODO: make this work with the new q; this is the last thing I need to do before it's awesome
 	m = 9 * (i / 9 / 3 * 3) + (i % 9 / 3 * 3)
 	for x in range(3):
 		for y in range(3):
@@ -238,16 +288,21 @@ def clear_candidates(i, q):
 # Output:   boolean - whether or not the puzzle is valid
 ###
 def valid(q):
-	# TODO: Make this so it doesn't use textify
-	q = textify(q)
-	for i in range(81):
-		if len(get_row_set(i, q)) is not len(set(get_row_set(i, q))):
-			return False
-		if len(get_col_set(i, q)) is not len(set(get_col_set(i, q))):
-			return False
-		if len(get_box_set(i, q)) is not len(set(get_box_set(i, q))):
-			return False
+	for i in range(3):
+		for j in range(9):
+			if(len(get_knowns(q[i][j])) is not len(set(get_knowns(q[i][j])))):
+				return false
 	return True
+
+
+###
+# Function: get_knowns
+# Purpose:  gets the known values(1 candidate) of a group
+# Input:    group - the group to check the knowns for
+# Output:   the set of elements from the group with a length of 1
+###
+def get_knowns(group):
+	return [x for x in group if len(x) is 1]
 
 ###
 # Function: solved()
@@ -256,7 +311,9 @@ def valid(q):
 # Output:   boolean - whether or not the puzzle is solved
 ###
 def solved(q):
-	for c in q:
-		if len(c) > 1:
-			return False
+	for i in q:
+		for c in i:
+			for d in c:
+				if len(d) > 1:
+					return False
 	return True
