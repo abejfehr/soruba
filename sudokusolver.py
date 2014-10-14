@@ -24,6 +24,18 @@
 #                    contains zero candidates for a cell) is unsolvable.
 ###
 
+Q = []
+Q.append([])
+for i in range(9):
+	Q.append(range(i*9,i*9+9))
+Q.append([])
+for i in range(9):
+	Q[1].append(i*9%9*9+i*9/9)
+Q.append([[0,1,2,9,10,11,18,19,20],[3,4,5,12,13,14,21,22,23],[6,7,8,15,16,17,24,25,26],\
+[27,28,29,36,37,38,45,46,47],[30,31,32,39,40,41,48,49,50],[33,34,35,42,43,44,51,52,53],\
+[54,55,56,63,64,65,72,73,74],[57,58,59,66,67,68,75,76,77],[60,61,62,69,70,71,78,79,80]])
+
+
 ###
 # Function: solve()
 # Purpose:  solves a sudoku puzzle
@@ -37,8 +49,8 @@ def solve_sudoku(p):
 
 import copy
 
-## from now on, q will be a candidate puzzle as such that it contains [[rowset],
-## [colset], [boxset]]
+## from now on, q will be a candidate puzzle as such that it contains [[rows],
+## [cols], [boxes]]
 
 ###
 # Function: solve()
@@ -54,33 +66,34 @@ def solve(q):
 
 	#solve the trivial cases
 	for i in range(9):
-		for j in range(9)
+		for j in range(9):
 			if len(q[0][i][j]) is 1:
 				clear_candidates(i, q)
 
 	h = 2
-	while(not solved(q) and h < 8):
+	while(not solved(q) and h < 4):
 		#solve the squares with > 1 possibility
 		for i in range(9):
 			for j in range(9):
 				if len(q[0][i][j]) is h:
 					for k in range(h):
 						nq = photocopy_puzzle_with(k, i*9+j, q)
-	#					print textify(nq)
-	#					print " " * i + "^"
-	#					print " " * i + str(q[i])
-	#					print valid(nq)
-	#					raw_input("Press Enter to Continue")
+						print textify(nq)
+						print " " * (i*9+j) + "^"
+#						print " " * (i*9+j-2) + str(q[0][i][j])
+						print valid(nq)
+						raw_input("Press Enter to Continue")
 						result = solve(nq)
 						if result:
 							return result
+#					print "none of them worked so I'm returning false"
 					return False
 		h += 1
 
 	if solved(q): return textify(q)
 	return False
 
-def solve2(q):
+def solve_old(q):
 	if not valid(q):
 		return False
 	#go through every square in the puzzle
@@ -112,11 +125,11 @@ def solve2(q):
 ###
 def textify(q):
 	s = []
-	for i in range(81):
-		if len(q[i]) > 1: s.append(".")
-		else: s.append(str(q[i][0]))
-	s = "".join(s)
-	return s
+	for i in range(9):
+		for j in range(9):
+			if len(q[0][i][j]) > 1: s.append(".")
+			else: s.append(str(q[0][i][j][0]))
+	return "".join(s)
 
 ###
 # Function: solve()
@@ -127,25 +140,36 @@ def textify(q):
 ###
 def photocopy_puzzle_with(n, i, q):
 	x = copy.deepcopy(q)
+	c = get_coords(i)
 	#convert the i to
-	v = [x[0][i%9][i/9][n]]
-	x[0][i%9][i/9][n] = v
-	x[1][i/9][i%9][n] = v
-	x[2][i/9*3+i%9][i/9%3*3+i%9%3][n] = v
+	v = [x[0][c[0][0]][c[0][1]][n]]
+	for y in range(3):
+		x[y][c[y][0]][c[y][1]] = v
 	clear_candidates(i, x)
 	return x
 
+
+def get_coords(i):
+	return ([i/9,i%9],\
+					[i%9,i/9],\
+					[i/9/3*3+i%9/3,i/9%3*3+i%9%3])
 """
-x  i j
-0  0 0  a = offset from the left edge of the puzzle = x % 9
-1  0 1  j = offset from the left edge of the box = a % 3
-2  0 2  b = offset from the top edge of the puzzle x / 9
-3  1 0  i = offset from the top edge of the box = b % 3
-4  1 1  k = 1 to 9 coordinate in the box = i * 3 + j
+i is always the rolling coordinate
+the inner coordinates are x and y where possible
+i  x y
+0  0 0  a = offset from the left edge of the puzzle = i % 9
+1  0 1  x = offset from the left edge of the box = a % 3
+2  0 2  b = offset from the top edge of the puzzle i / 9
+3  1 0  y = offset from the top edge of the box = b % 3
+4  1 1  k = 1 to 9 coordinate in the box = y * 3 + x
 5  1 2  m = box coord from left = a / 3
 6  2 0  n = box coord from top = b / 3
-7  2 1  s = b * 3 + a
+7  2 1  s = box relative to puzzle 1D coordinate b * 3 + a
 """
+
+#the exact opposite of get_coords
+def get_i(c):
+	return c[0]*9+c[1]
 
 ###
 # Function: generate_candidate_puzzle()
@@ -173,19 +197,22 @@ def generate_candidate_puzzle(p):
 def get_candidate_rows(p):
 	q = []
 	for z in range(9):
-		q.append([get_candidates(z*9+j,p) if x is "." else [int(x)] for (j,x) in enumerate(p[z*9:z*9+9])])
+		q.append([get_candidates(z*9+j,p) if x is "." else \
+		[int(x)] for (j,x) in enumerate(p[z*9:z*9+9])])
 	return q
 
 def get_candidate_cols(p):
 	q = []
 	for z in range(9):
-		q.append([get_candidates(j*9+z,p) if x is "." else [int(x)] for (j,x) in enumerate(p[z::9])])
+		q.append([get_candidates(j*9+z,p) if x is "." else \
+		[int(x)] for (j,x) in enumerate(p[z::9])])
 	return q
 
 def get_candidate_boxes(p):
 	q = []
 	for m in [n for n in range(81) if n % 3 is 0 and (n / 9) % 3 is 0]:
-		q.append([get_candidates(m+j%3+j/3*9,p) if x is "." else [int(x)] for (j,x) in enumerate(p[m:m+3] + p[m+9:m+12] + p[m+18:m+21])])
+		q.append([get_candidates(m+j%3+j/3*9,p) if x is "." else \
+		[int(x)] for (j,x) in enumerate(p[m:m+3] + p[m+9:m+12] + p[m+18:m+21])])
 	return q
 
 
@@ -201,9 +228,9 @@ def get_candidates(i, p):
 		return [int(p[i])]
 	#start with all of them
 	c = range(1,10)
-	row = get_row_set(i, p)
-	col = get_col_set(i, p)
-	box = get_box_set(i, p)
+	row = get_row_known_set(i, p)
+	col = get_col_known_set(i, p)
+	box = get_box_known_set(i, p)
 	c = [x for x in list(set(c) - set(row + col + box)) if x is not "."]
 	if len(c) < 1: return False
 	return c
@@ -215,9 +242,8 @@ def get_candidates(i, p):
 #           p - the sudoku puzzle
 # Output:   the completed puzzle - an 81 character string of numbers
 ###
-def get_row_set(i, p):
-	z = i / 9
-	return map(int, [x for x in p[z*9:z*9+9] if x is not "."])
+def get_row_known_set(i, p):
+	return map(int, [x for x in p[i/9*9:i/9*9+9] if x is not "."])
 
 ###
 # Function: solve()
@@ -226,9 +252,8 @@ def get_row_set(i, p):
 #           Completed numbers are written and empty spaces are .'s
 # Output:   the completed puzzle - an 81 character string of numbers
 ###
-def get_col_set(i, p):
-	z = i % 9
-	return map(int, [x for x in p[z::9] if x is not "."])
+def get_col_known_set(i, p):
+	return map(int, [x for x in p[i%9::9] if x is not "."])
 
 ###
 # Function: solve()
@@ -237,9 +262,10 @@ def get_col_set(i, p):
 #           Completed numbers are written and empty spaces are .'s
 # Output:   the completed puzzle - an 81 character string of numbers
 ###
-def get_box_set(i, p):
+def get_box_known_set(i, p):
 	m = 9 * (i / 9 / 3 * 3) + (i % 9 / 3 * 3)
-	return map(int, [x for x in p[m:m+3] + p[m+9:m+12] + p[m+18:m+21] if x is not "."])
+	return map(int, [x for x in p[m:m+3] + p[m+9:m+12] + p[m+18:m+21] \
+	if x is not "."])
 
 ###
 # Function: clear_candidates()
@@ -250,36 +276,55 @@ def get_box_set(i, p):
 #           related squares
 ###
 def clear_candidates(i, q):
+	#TODO: fix this function. It *almost* works
+	c = get_coords(i)
 
-	if len(q[0][i%9][i/9]) > 1: return
+	#setup
+	if len(q[0][c[0][0]][c[0][1]]) > 1: return
 	flag = False
 
-	a = i%9
-	b = i/9
-	for w in range(2):
-		for x in range(9):
-			if q[w][a][b][0] in q[w][a][x] and i/9 is not x and len(q[w][a][x]) > 1:
-				q[w][a][b].remove(q[w][a][b][0])
+	for x in range(3): #go through the rows, cols and boxes
+		for y in range(9): #go through the items in the each section
+			ith_cell_of_current = q[x][c[x][0]][c[x][1]][0]
+			neighbour_to_check = q[x][c[x][0]][y]
+			if ith_cell_of_current in neighbour_to_check and c[x][1] is not y \
+			and len(neighbour_to_check) > 1:
+#				print c, y, x
+#				print get_i([c[x][0],y])
+#				if x is 0:
+#					print "ASDF"
+#					d = get_coords(get_i([c[x][0],y]))
+#				if x is 1:
+#					print "FDSA"
+#					d = get_coords(get_i([y,c[x][0]]))
+#				if x is 2:
+#					print "ASSDF"
+#					d = get_coords(c[x][1]+y/3 * 9 + c[x][0]+y%3)
+				print "found candidate", ith_cell_of_current, "in q at position"
+#				print q[0]
+#				print 25*" "
+#				print q[1]
+#				print 25*" "
+#				print q[2]
+				q[x][c[x][0]][y].remove(ith_cell_of_current)
 				flag = True
-				if len(q[w][a][x]) is 1:
-					clear_candidates(a*9+x, q)
-		#switch a and b
-		z = a; a = b; b = z
-	for x in range(9):
-
-	a = i/9*3+i%9
-	b = i/9%3*3+i%9%3
-
-	#TODO: make this work with the new q; this is the last thing I need to do before it's awesome
-	m = 9 * (i / 9 / 3 * 3) + (i % 9 / 3 * 3)
-	for x in range(3):
-		for y in range(3):
-			if q[i][0] in q[m+(x*9)+y] and m+(x*9)+y is not i and len(q[m+(x*9)+y]) > 1:
-				q[m+(x*9)+y].remove(q[i][0])
-				flag = True
-				if len(q[m+(x*9)+y]) is 1:
-					clear_candidates(m+(x*9)+y, q)
+				if len(neighbour_to_check) is 1:
+#					print "left it at one"
+					clear_candidates(Q[x][c[x][0]][y], q)
 	return flag
+
+def get_i_special(x, i, y):
+	if x is 0:
+		i /= 9
+		return i+y
+	elif x is 1:
+		i /= 9
+		return (i+y) % 9 * 9 + (i+y) / 9
+	elif x is 2:
+		m = i % 9 / 3
+		n = i / 9 / 3
+		return n * 9 + m + (y % 3 * 9) + y / 3
+	else: return False
 
 ###
 # Function: valid()
@@ -290,8 +335,8 @@ def clear_candidates(i, q):
 def valid(q):
 	for i in range(3):
 		for j in range(9):
-			if(len(get_knowns(q[i][j])) is not len(set(get_knowns(q[i][j])))):
-				return false
+			if len(get_knowns(q[i][j])) is not len(set(get_knowns(q[i][j]))):
+				return False
 	return True
 
 
@@ -302,7 +347,7 @@ def valid(q):
 # Output:   the set of elements from the group with a length of 1
 ###
 def get_knowns(group):
-	return [x for x in group if len(x) is 1]
+	return [x[0] for x in group if len(x) is 1]
 
 ###
 # Function: solved()
