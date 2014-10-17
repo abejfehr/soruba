@@ -24,19 +24,18 @@
 #                    contains zero candidates for a cell) is unsolvable.
 ###
 
+import copy #for the photocopy method
+
 ###
-# Function: solve()
-# Purpose:  solves a sudoku puzzle
-# Input:    puzzle - an 81 character string which is a sudoku puzzle.
+# Function: solve_sudoku()
+# Purpose:  kicks off the sudoku solving process
+# Input:    p - an 81 character string which is a sudoku puzzle.
 #           Completed numbers are written and empty spaces are .'s
 # Output:   the completed puzzle - an 81 character string of numbers
 ###
 def solve_sudoku(p):
 	q = generate_candidate_puzzle(p)
-	#TODO: store boxes, rows and columns separately here
 	return solve(q)
-
-import copy
 
 ###
 # Function: solve()
@@ -62,11 +61,6 @@ def solve(q):
 			if len(q[i]) is h:
 				for j in range(h):
 					nq = photocopy_puzzle_with(j, i, q)
-#					print textify(nq)
-#					print " " * i + "^"
-#					print " " * i + str(q[i])
-#					print valid(nq)
-#					raw_input("Press Enter to Continue")
 					result = solve(nq)
 					if result:
 						return result
@@ -76,35 +70,11 @@ def solve(q):
 	if solved(q): return textify(q)
 	return False
 
-def solve2(q):
-	if not valid(q):
-		return False
-	#go through every square in the puzzle
-	for i in range(81):
-		if len(q[i]) > 1:
-			for j in range(len(q[i])):
-				nq = photocopy_puzzle_with(j, i, q)
-#				print textify(nq)
-#				print " " * i + "^"
-#				print " " * i + str(q[i])
-#				print valid(nq)
-#				raw_input("Press Enter to Continue")
-				result = solve(nq)
-				if result:
-					return result
-			return False
-		else:
-			clear_candidates(i, q)
-
-	if solved(q): return textify(q)
-	return False
-
 ###
-# Function: solve()
-# Purpose:  solves a sudoku puzzle
-# Input:    puzzle - an 81 character string which is a sudoku puzzle.
-#           Completed numbers are written and empty spaces are .'s
-# Output:   the completed puzzle - an 81 character string of numbers
+# Function: textify()
+# Purpose:  Returns the string representation of the puzzle
+# Input:    q - the candidate puzzle to textify
+# Output:   an 81-character long string where the unknowns are periods
 ###
 def textify(q):
 	s = []
@@ -115,11 +85,14 @@ def textify(q):
 	return s
 
 ###
-# Function: solve()
-# Purpose:  solves a sudoku puzzle
-# Input:    puzzle - an 81 character string which is a sudoku puzzle.
-#           Completed numbers are written and empty spaces are .'s
-# Output:   the completed puzzle - an 81 character string of numbers
+# Function: photocopy_puzzle_with()
+# Purpose:  returns a copy of the candidate puzzle q, where the ith cell is
+#						given the nth candidate's value
+# Input:    n - the index of which candidate to take
+#						i - the index of which cell to guess on
+#						q - the candidate puzzle to copy
+# Output:   the completed puzzle - the copy where the nth candidate of the ith
+# 					cell is chosen.
 ###
 def photocopy_puzzle_with(n, i, q):
 	x = copy.deepcopy(q)
@@ -128,11 +101,11 @@ def photocopy_puzzle_with(n, i, q):
 	return x
 
 ###
-# Function: solve()
-# Purpose:  solves a sudoku puzzle
+# Function: generate_candidate_puzzle()
+# Purpose:  converts a string representation of a puzzle to a list of numbers
 # Input:    puzzle - an 81 character string which is a sudoku puzzle.
 #           Completed numbers are written and empty spaces are .'s
-# Output:   the completed puzzle - an 81 character string of numbers
+# Output:   candidate puzzle - the list that contains lists of candidates
 ###
 def generate_candidate_puzzle(p):
 	#the puzzle is already solved or isn't the correct length
@@ -164,33 +137,31 @@ def get_candidates(i, p):
 	return c
 
 ###
-# Function: get_row_set(i, p)
-# Purpose:  solves a sudoku puzzle
-# Input:    i - the index of the target cell
-#           p - the sudoku puzzle
-# Output:   the completed puzzle - an 81 character string of numbers
+# Function: get_row_set()
+# Purpose:  returns a set of the known values from the row of the ith cell
+# Input:    i - the index of the cell whose row to get knowns from
+#						q - the candidate puzzle to use
+# Output:   the set of the known values from the row of the ith cell
 ###
 def get_row_set(i, p):
-	z = i / 9
-	return map(int, [x for x in p[z*9:z*9+9] if x is not "."])
+	return map(int, [x for x in p[i/9*9:i/9*9+9] if x is not "."])
 
 ###
-# Function: solve()
-# Purpose:  solves a sudoku puzzle
-# Input:    puzzle - an 81 character string which is a sudoku puzzle.
-#           Completed numbers are written and empty spaces are .'s
-# Output:   the completed puzzle - an 81 character string of numbers
+# Function: get_col_set()
+# Purpose:  returns a set of the known values from the column of the ith cell
+# Input:    i - the index of the cell whose column to get knowns from
+#						q - the candidate puzzle to use
+# Output:   the set of the known values from the column of the ith cell
 ###
 def get_col_set(i, p):
-	z = i % 9
-	return map(int, [x for x in p[z::9] if x is not "."])
+	return map(int, [i%9 for x in p[i%9::9] if x is not "."])
 
 ###
-# Function: solve()
-# Purpose:  solves a sudoku puzzle
-# Input:    puzzle - an 81 character string which is a sudoku puzzle.
-#           Completed numbers are written and empty spaces are .'s
-# Output:   the completed puzzle - an 81 character string of numbers
+# Function: get_box_set()
+# Purpose:  returns a set of the known values from the box of the ith cell
+# Input:    i - the index of the cell whose box to get knowns from
+#						q - the candidate puzzle to use
+# Output:   the set of the known values from the box of the ith cell
 ###
 def get_box_set(i, p):
 	m = 9 * (i / 9 / 3 * 3) + (i % 9 / 3 * 3)
@@ -238,7 +209,6 @@ def clear_candidates(i, q):
 # Output:   boolean - whether or not the puzzle is valid
 ###
 def valid(q):
-	# TODO: Make this so it doesn't use textify
 	q = textify(q)
 	for i in range(81):
 		if len(get_row_set(i, q)) is not len(set(get_row_set(i, q))):
